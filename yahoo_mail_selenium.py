@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Yahoo Mail Automation - Mark Skyscanner Emails as Spam (Selenium Version)
+Gmail Automation - Delete Skyscanner Emails (Selenium Version)
 This script:
-1. Opens Yahoo Mail and Google Scholar in Windows Chrome
+1. Opens Gmail in Windows Chrome
 2. Waits for you to login manually
-3. Searches for Skyscanner emails
+3. Searches for no-reply@sender.skyscanner.com emails
 4. Selects all matching emails
-5. Marks them as spam automatically
+5. Deletes them automatically
 """
 
 from selenium import webdriver
@@ -25,14 +25,14 @@ def print_step(step, message, status=""):
     print(f"{icon} [{step}] {message}")
 
 def is_logged_in(driver):
-    """Check if user is logged in to Yahoo Mail"""
+    """Check if user is logged in to Gmail"""
     try:
-        # Check for common Yahoo Mail logged-in indicators
+        # Check for common Gmail logged-in indicators
         indicators = [
-            '[data-test-id="app-canvas"]',
-            'button[data-test-id="compose-button"]',
-            '[aria-label*="mailbox"]',
-            'button[aria-label*="Settings"]'
+            '[aria-label*="Compose"]',
+            '[aria-label*="Search mail"]',
+            'div[role="navigation"]',
+            '[gh="tm"]'
         ]
 
         for selector in indicators:
@@ -43,7 +43,7 @@ def is_logged_in(driver):
                 continue
 
         # Also check URL
-        if "mail.yahoo.com/d/" in driver.current_url:
+        if "mail.google.com/mail" in driver.current_url and "SignUp" not in driver.current_url:
             return True
 
         return False
@@ -52,11 +52,12 @@ def is_logged_in(driver):
 
 def wait_for_login(driver, timeout=300):
     """Wait for user to complete manual login"""
-    print_step("LOGIN", "Please login to Yahoo Mail in the browser window", "wait")
+    print_step("LOGIN", "Please login to Gmail in the browser window", "wait")
     print("\n📋 Login steps:")
-    print("   1. Enter your email/username")
-    print("   2. Enter your password")
-    print("   3. Complete any 2FA/verification")
+    print("   1. Enter your email")
+    print("   2. Click 'Next'")
+    print("   3. Enter your password")
+    print("   4. Complete any 2FA if required")
     print(f"\n⏳ Waiting up to {timeout//60} minutes for login...\n")
 
     start_time = time.time()
@@ -67,7 +68,7 @@ def wait_for_login(driver, timeout=300):
             return True
 
         # Check if URL changed away from login
-        if "mail.yahoo.com" in driver.current_url and "login" not in driver.current_url.lower():
+        if "mail.google.com" in driver.current_url and "signin" not in driver.current_url.lower():
             time.sleep(2)
             if is_logged_in(driver):
                 print_step("LOGIN", "Login successful!", "success")
@@ -80,13 +81,13 @@ def wait_for_login(driver, timeout=300):
 
 def search_for_skyscanner(driver):
     """Search for Skyscanner emails"""
-    print_step("SEARCH", "Searching for Skyscanner emails...", "search")
+    print_step("SEARCH", "Searching for no-reply@sender.skyscanner.com emails...", "search")
 
     try:
         # Navigate to search with query
-        search_url = "https://mail.yahoo.com/d/search/keyword=from%253Askyscanner"
+        search_url = "https://mail.google.com/mail/u/0/#search/from%3Ano-reply%40sender.skyscanner.com"
         driver.get(search_url)
-        time.sleep(3)
+        time.sleep(5)
 
         print_step("SEARCH", "Search page loaded", "success")
         return True
@@ -99,14 +100,13 @@ def select_all_emails(driver):
     print_step("SELECT", "Selecting all emails...", "work")
 
     try:
-        # Try different selectors for "Select All" checkbox
+        # Gmail select all selectors
         select_all_selectors = [
-            'input[type="checkbox"][aria-label*="Select"]',
-            'button[aria-label*="Select all"]',
-            '[data-test-id="select-all-checkbox"]',
-            'input[data-test-id="bulk-action-checkbox"]',
+            'div[role="checkbox"][aria-label*="Select"]',
             'span[role="checkbox"]',
-            'input[type="checkbox"]'
+            'div.oZ-jc.T-Jo',
+            '[aria-label="Select"]',
+            'div[gh="tm"] span[role="checkbox"]'
         ]
 
         for selector in select_all_selectors:
@@ -116,12 +116,12 @@ def select_all_emails(driver):
                 time.sleep(1)
                 print_step("SELECT", f"Clicked select all using: {selector}", "success")
 
-                # Check if there's a "Select all X conversations" link
+                # Check if there's a "Select all conversations that match this search" link
                 try:
-                    select_more = driver.find_element(By.XPATH, "//button[contains(text(), 'Select all')] | //a[contains(text(), 'Select all')]")
+                    select_more = driver.find_element(By.XPATH, "//span[contains(text(), 'Select all')]")
                     select_more.click()
                     time.sleep(1)
-                    print_step("SELECT", "Selected ALL conversations (not just visible)", "success")
+                    print_step("SELECT", "Selected ALL matching conversations", "success")
                 except:
                     pass
 
@@ -136,44 +136,45 @@ def select_all_emails(driver):
         print_step("SELECT", f"Error: {e}", "info")
         return False
 
-def mark_as_spam(driver):
-    """Mark selected emails as spam"""
-    print_step("SPAM", "Marking emails as spam...", "work")
+def delete_emails(driver):
+    """Delete selected emails"""
+    print_step("DELETE", "Deleting emails...", "work")
 
     try:
-        # Try different selectors for spam button
-        spam_selectors = [
-            'button[data-test-id="spam-button"]',
-            'button[aria-label*="Spam"]',
-            'button[title*="Spam"]',
-            '[data-test-id="toolbar-spam"]'
+        # Gmail delete button selectors
+        delete_selectors = [
+            'div[data-tooltip="Delete"]',
+            '[aria-label="Delete"]',
+            'div[aria-label="Delete"]',
+            'div.G-atb[data-tooltip="Delete"]',
+            'button[aria-label="Delete"]'
         ]
 
-        for selector in spam_selectors:
+        for selector in delete_selectors:
             try:
                 element = driver.find_element(By.CSS_SELECTOR, selector)
                 element.click()
                 time.sleep(1)
-                print_step("SPAM", "Clicked spam button!", "success")
+                print_step("DELETE", "Clicked delete button!", "success")
                 return True
             except:
                 continue
 
-        # Try by text
+        # Try by text or title
         try:
-            element = driver.find_element(By.XPATH, "//button[contains(text(), 'Spam')]")
+            element = driver.find_element(By.XPATH, "//div[@aria-label='Delete' or @data-tooltip='Delete']")
             element.click()
             time.sleep(1)
-            print_step("SPAM", "Clicked spam button!", "success")
+            print_step("DELETE", "Clicked delete button!", "success")
             return True
         except:
             pass
 
-        print_step("SPAM", "Could not find spam button - may need to do manually", "info")
+        print_step("DELETE", "Could not find delete button - may need to do manually", "info")
         return False
 
     except Exception as e:
-        print_step("SPAM", f"Error: {e}", "info")
+        print_step("DELETE", f"Error: {e}", "info")
         return False
 
 def main():
@@ -182,14 +183,14 @@ def main():
     print("""
     ╔══════════════════════════════════════════════════════════╗
     ║                                                          ║
-    ║     Yahoo Mail Automation - Mark Skyscanner as Spam      ║
+    ║       Gmail Automation - Delete Skyscanner Emails       ║
     ║                                                          ║
     ║  This script will:                                      ║
-    ║  1. Open Yahoo Mail and Google Scholar                  ║
-    ║  2. Wait for you to login to Yahoo                      ║
-    ║  3. Search for Skyscanner emails                        ║
+    ║  1. Open Gmail                                          ║
+    ║  2. Wait for you to login to Gmail                      ║
+    ║  3. Search for no-reply@sender.skyscanner.com           ║
     ║  4. Select all matching emails                          ║
-    ║  5. Mark them as spam                                   ║
+    ║  5. Delete them                                         ║
     ║                                                          ║
     ╚══════════════════════════════════════════════════════════╝
     """)
@@ -220,21 +221,11 @@ def main():
     try:
         print_step("BROWSER", "Windows Chrome launched successfully!", "success")
 
-        # Open Yahoo Mail
-        print_step("NAVIGATE", "Opening Yahoo Mail...", "info")
-        driver.get("https://mail.yahoo.com")
-        time.sleep(2)
-        print_step("NAVIGATE", "Yahoo Mail loaded", "success")
-
-        # Open Google Scholar in new tab
-        print_step("NAVIGATE", "Opening Google Scholar in new tab...", "info")
-        driver.execute_script("window.open('https://scholar.google.com/');")
-        time.sleep(2)
-        print_step("NAVIGATE", "Google Scholar loaded", "success")
-
-        # Switch back to Yahoo Mail tab (first tab)
-        driver.switch_to.window(driver.window_handles[0])
-        time.sleep(1)
+        # Open Gmail
+        print_step("NAVIGATE", "Opening Gmail...", "info")
+        driver.get("https://mail.google.com/mail/u/0/#inbox")
+        time.sleep(3)
+        print_step("NAVIGATE", "Gmail loaded", "success")
 
         # Wait for manual login
         if not wait_for_login(driver, timeout=300):
@@ -252,23 +243,23 @@ def main():
             if select_all_emails(driver):
                 time.sleep(2)
 
-                # Mark as spam
-                if mark_as_spam(driver):
+                # Delete emails
+                if delete_emails(driver):
                     print("\n" + "="*60)
-                    print("🎉 SUCCESS! Skyscanner emails marked as spam!")
+                    print("🎉 SUCCESS! Skyscanner emails deleted!")
                     print("="*60)
                 else:
                     print("\n" + "="*60)
-                    print("⚠️  Could not find spam button automatically.")
-                    print("   Please click the 'Spam' button manually in the browser.")
+                    print("⚠️  Could not find delete button automatically.")
+                    print("   Please click the 'Delete' button (trash icon) manually in the browser.")
                     print("="*60)
             else:
                 print("\n" + "="*60)
                 print("⚠️  Could not select all emails automatically.")
                 print("   Please:")
                 print("   1. Click the checkbox to select all emails")
-                print("   2. Click 'Select all X conversations' if shown")
-                print("   3. Click the 'Spam' button")
+                print("   2. Click 'Select all conversations that match this search' if shown")
+                print("   3. Click the 'Delete' button (trash icon)")
                 print("="*60)
 
         # Keep browser open for user to verify
