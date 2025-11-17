@@ -1,0 +1,18 @@
+{
+  "repositories": [
+    {
+      "name": "chrome_automation",
+      "folder": "/home/tayyabcheema777/ali",
+      "remote": "git@github.com:MuhammadTayyabIlyas/chrome_automation.git",
+      "branch": "master",
+      "enabled": true
+    },
+    {
+      "name": "windows_automation",
+      "folder": "/home/tayyabcheema777/ali/windows_automation",
+      "remote": "git@github.com:MuhammadTayyabIlyas/windows-automation-wsl.git",
+      "branch": "main",
+      "enabled": true
+    }
+  ]
+}
