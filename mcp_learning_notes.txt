@@ -1,0 +1,67 @@
+MCP Server Configuration Notes
+==============================
+
+DuckDuckGo Search Server
+------------------------
+- Package lives in the main `.venv`; entrypoint: `/home/tayyabcheema777/.venv/bin/duckduckgo-mcp-server`.
+- Config file: `.config/mcp/servers/duckduckgo-search.json` calls the binary directly (no `uvx` download needed).
+- Start example: `/home/tayyabcheema777/.venv/bin/duckduckgo-mcp-server >/tmp/duckduckgo-mcp.log 2>&1 &`.
+- Network hiccups (DNS failures) happen if PyPI is unreachable; installing once into the virtualenv avoids repeat downloads.
+- Stop with `pkill -f duckduckgo-mcp-server` or by killing the PID.
+
+Google Docs Server
+------------------
+- Requires Python 3.13; dedicated virtualenv lives at `.venv-google-docs`.
+- Installed with `uv pip install --python .venv-google-docs/bin/python google-docs-mcp`.
+- Config file: `.config/mcp/servers/google-docs.json` (stores the serialized GOOGLE settings + `AUTO_AUTH` flag).
+- OAuth credentials: place `client_secrets.json` in `.config/google-docs-mcp/` and keep `GOOGLE` env JSON in sync with the same client ID/secret and scopes (`docs`, `spreadsheets`, `drive.readonly`).
+- Authorization (console flow):
+  1. Generate URL & session with `.venv-google-docs/bin/google-docs-mcp auth authorize --force` (use console path) or the custom helper script.
+  2. Open the authorization link manually, copy the `code=` value from the redirected URL.
+  3. Exchange the code and store the token at `/home/tayyabcheema777/.local/state/google-docs-mcp/token.json`.
+- After tokens exist, start with:
+  ```
+  GOOGLE='{"client_id":"<id>","client_secret":"<secret>","oauth_client_file":"/home/tayyabcheema777/.config/google-docs-mcp/client_secrets.json","scopes":["https://www.googleapis.com/auth/documents","https://www.googleapis.com/auth/drive.readonly"]}' \
+  AUTO_AUTH=true \
+  /home/tayyabcheema777/.venv-google-docs/bin/google-docs-mcp server >/tmp/google-docs-mcp.log 2>&1 &
+  ```
+- Logs: `/tmp/google-docs-mcp.log`; stop with `pkill -f google-docs-mcp server`.
+
+General Lessons
+---------------
+- For MCP configs, point directly at installed binaries instead of relying on `uvx` to fetch packages every run.
+- Keep per-server virtualenvs when Python version requirements differ.
+- Serialization trick: use a single `GOOGLE` JSON env var to satisfy `pydantic_settings`.
+- When automatic browser launch fails, capture the OAuth URL and finish the flow manually; always save the generated session data before exchanging the code.
+- Expanded scopes (`spreadsheets`, `gmail.readonly`, `calendar.readonly`) allow Docs, Sheets, Gmail, and Calendar tooling to reuse the same OAuth token saved under `.local/state/google-docs-mcp/token.json`.
+
+Google Sheets Server (Custom)
+-----------------------------
+- Script: `mcp-servers/google_sheets_server.py` (lightweight FastMCP server using the shared token file).
+- Config file: `.config/mcp/servers/google-sheets.json` calls the script with `.venv/bin/python3`.
+- Environment variables: `GOOGLE_TOKEN_FILE` points to the Docs token; `GOOGLE_SCOPES` includes `spreadsheets` and `drive.readonly` scopes.
+- Tools exposed:
+  * `sheets.read_range` – fetch values via A1 notation.
+  * `sheets.append_row` – append a row using `USER_ENTERED` semantics.
+- Requires the OAuth token to be authorized with the `spreadsheets` scope; rerun the console flow with the updated scope list if needed.
+
+Gmail Server (Custom)
+---------------------
+- Script: `mcp-servers/google_gmail_server.py` (FastMCP server using Gmail API).
+- Config file: `.config/mcp/servers/google-gmail.json`; reuses token file with `GOOGLE_SCOPES` of `gmail.readonly`.
+- Primary tool: `gmail.list_messages` (returns recent metadata with snippets).
+- Token must include `https://www.googleapis.com/auth/gmail.readonly`.
+
+Calendar Server (Custom)
+------------------------
+- Script: `mcp-servers/google_calendar_server.py`.
+- Config file: `.config/mcp/servers/google-calendar.json`; uses shared token with `calendar.readonly` scope.
+- Tool: `calendar.list_events` (lists upcoming events from a given calendar).
+- Token must include `https://www.googleapis.com/auth/calendar.readonly`.
+
+Playwright Browser Server
+-------------------------
+- Package: `playwright-mcp==0.1.0` installed in `.venv`; browsers provisioned via `~/.venv/bin/playwright install chromium` (requires network + system deps `libnspr4`, `libnss3`, `libasound2t64` if missing).
+- Config file: `.config/mcp/servers/playwright.json` invoking `/home/tayyabcheema777/.venv/bin/playwright-mcp`.
+- Tools include navigation, click, form interactions, screenshot resources (`screenshot://<page_id>`), and page analysis prompts.
+- Runs Chromium in headed mode by default (`headless=False`); may need system libraries per Playwright warning or manual edits if headless mode is required.

@@ -1,0 +1,42 @@
+INSTRUCTIONS TO CAPTURE GOOGLE SCHOLAR SCREENSHOT
+==================================================
+
+Since Chrome is already open with Google Scholar, please:
+
+OPTION 1: Manual Screenshot (Easiest)
+--------------------------------------
+1. Make sure Google Scholar is visible in your Windows Chrome browser
+2. Press Windows Key + Shift + S (Windows Snipping Tool)
+   OR Press PrtScn to capture full screen
+3. Save the screenshot as: scholar_page.png
+4. Copy it to WSL using one of these methods:
+
+   From Windows PowerShell:
+   copy scholar_page.png \\wsl$\Ubuntu\home\tayyabcheema777\ali\
+
+   OR drag and drop into WSL location
+
+5. Then run in WSL:
+   source playwright_venv/bin/activate
+   python3 analyze_scholar_screenshot.py /home/tayyabcheema777/ali/scholar_page.png
+
+OPTION 2: PowerShell Screenshot Script
+---------------------------------------
+Save this as capture_chrome.ps1 in Windows:
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bitmap = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
+$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+$graphics.CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size)
+$bitmap.Save("C:\Users\YourUsername\scholar_screenshot.png")
+$graphics.Dispose()
+$bitmap.Dispose()
+
+Then copy to WSL.
+
+OPTION 3: Use existing screenshot
+----------------------------------
+If you already have a screenshot saved, just provide the path!

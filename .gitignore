@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+*_venv/
+venv/
+ENV/
+env/
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Processed files tracking
+processed_images.log
+
+# Media files (optional - uncomment if you don't want to track these)
+# *.mp3
+# *.wav
+# *.png
+# *.jpg
+# *.jpeg
+
+# pip installer
+get-pip.py
